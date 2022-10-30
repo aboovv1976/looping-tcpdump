@@ -1,6 +1,6 @@
 # looping-tcpdump
 
-$ ./loop-tcp.sh 
+$ loop-tcp.sh --help
 
 loop-tcp.sh starts the capture, keeping <size> amount of capture in a rotating fashion
 loop-tcp.sh runs the <cmd> continuously and look for <pattern> in the <cmd> output
