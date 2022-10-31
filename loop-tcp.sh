@@ -16,6 +16,7 @@ snaplen=0 # Length of each packet to be captured. 0 means default which is 256KB
 n=`expr $fSize - 1`
 m=`expr $maxSize + $n`
 nMax=`expr $m / $fSize`
+failed=0
 
 getTs()
 {
@@ -36,7 +37,14 @@ monitor()
 	else
 	    ss=$pattern
 	fi
-        p=`eval $runCmd |grep -a -E "$ss" | tail -1`
+        p=`eval $runCmd 2>/tmp/$0_status.err |grep -a -E "$ss" | tail -1`
+        if grep ": command not found" /tmp/$0_status.err >/dev/null 2>&1
+	then
+		echot "Command $runCmd FAILED! You need to run it with proper command for meaningful results in the capture" 
+		echot $(cat /tmp/$0_status.err)
+		failed=1
+		exit 2
+	fi
         HASH=`echo "$p"|md5sum | cut -f1 -d' '`
 
 	# Exit if no pattern provided. Exit after running the command
@@ -69,7 +77,7 @@ monitor()
 		    f=`echo $line | awk '{print $7}'` # file name
 		    totalSize=`expr $totalSize + $s` # calcultate the total size of capture files in the directory
 		    # get the time stamp on first packet of the oldest file
-		    [ -z "$oldestPTime" ] && p=`tcpdump -r $f -n -c 1 -tt 2>/dev/null| awk '{print $1}' | cut -f1 -d.`
+		    [ -z "$oldestPTime" ] && oldestPTime=`tcpdump -r $f -n -c 1 -tt 2>/dev/null| awk '{print $1}' | cut -f1 -d.`
 		    c=`expr $c + 1`
             done <<< "$listing"
 
@@ -83,7 +91,7 @@ monitor()
 	    then
 		    collectionTime=`expr $t - $oldestPTime`
 		    tp=`expr $totalSize / $collectionTime` #tp is fill rate
-		    [ "$collectionTime" -lt "$minFillTime" -a "$tp" -gt "$lastRunTp" ] && echot "Files rotating very fast - ${totalSize}MB in ${minFillTime} seconds (${tp}MB/s), increase --size or filter capture using --filter"
+		    [ "$collectionTime" -lt "$minFillTime" -a "$tp" -gt "$lastRunTp" ] && echot "Files rotating too fast - ${totalSize}MB in ${minFillTime}s (${tp}MB/s), increase --size, filter capture with --filter or use --snaplen"
 	            lastRunTp=$tp
 	    fi
         done
@@ -98,11 +106,14 @@ cleanup()
         kill $PID
 	echot "Killed pid $PID process='$p'"
     fi
-    echot "Captured Files:"
-    echo "$(ls -l ${dir}/${file}*)"
-    echo
-    echot "Zip files using 'tar cvzf ${dir}/${file}.tgz ${dir}/${file}*'"
-    echot "Capture finished"
+    if [ "$failed" != "1" ] 
+    then
+        echot "Captured Files:"
+        echo "$(ls -ltr ${dir}/${file}*)"
+        echo
+        echot "Zip files using 'tar cvzf ${dir}/${file}.tgz ${dir}/${file}*'"
+        echot "Capture finished"
+    fi
 }
 
 startTcpDump()
