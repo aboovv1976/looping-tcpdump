@@ -1,5 +1,6 @@
 # looping-tcpdump
 
+```
 $ loop-tcp.sh --help
 
 loop-tcp.sh starts the capture, keeping <size> amount of capture in a rotating fashion
@@ -41,4 +42,4 @@ loop-tcp.sh --interface <if> --dir <dir> [--pattern <pattern>] [--size <totalSiz
                       Default is 1000 (1GB)
 
 <snapSize>          - Size of each packet to capture
-                      Default is full packet
+                      Default is full packet ```
