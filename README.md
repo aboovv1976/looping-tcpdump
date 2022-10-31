@@ -6,9 +6,12 @@ $ loop-tcp.sh --help
 loop-tcp.sh starts the capture, keeping <size> amount of capture in a rotating fashion
 loop-tcp.sh runs the <cmd> continuously and look for <pattern> in the <cmd> output
 Once pattern is found, the capture is stopped and exits
-if no pattern is specified, <cmd> is run just once and stops the capture and exits. This will handy to time box a command
+if no pattern is specified, <cmd> is run just once, stops the capture and exits.
+This will handy to time box a command
 
-General paractice is to run loop-tcp.sh using nohup and keep it in background. It will run until a pattern is discovered.
+General paractice is to run loop-tcp.sh using nohup and keep it in background.
+It will run until a pattern is discovered in the output of <cmd>.
+
 Mandatory parameters are interface --interface <if> --dir <dir>
 
 Usage:
