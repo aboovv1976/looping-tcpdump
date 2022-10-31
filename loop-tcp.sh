@@ -152,7 +152,7 @@ usage()
 	echo "<filter expression> - A filter to be passed as tcpdump filter"
 	echo "                      Eg: --filter 'port 2049'"
 	echo
-	echo "<cmd>      - A filter to be passed as tcpdump filter"
+	echo "<cmd>               - A filter to be passed as tcpdump filter"
 	echo "                      Eg: --runCmd 'cat /var/log/syslog'"
 	echo "                      Default is 'cat /var/log/messages'"
 	echo
