@@ -3,7 +3,6 @@
 #Defaults
 host="None"
 filter="None"
-pattern="None"
 runCmd="cat /var/log/messages"
 snapLen=0
 fSize=200
@@ -102,7 +101,7 @@ cleanup()
     echot "Captured Files:"
     echo "$(ls -l ${dir}/${file}*)"
     echo
-    echot "Zip files using 'tar cvzf $${dir}/${file}.tgz ${dir}/${file}*'"
+    echot "Zip files using 'tar cvzf ${dir}/${file}.tgz ${dir}/${file}*'"
     echot "Capture finished"
 }
 
@@ -129,10 +128,11 @@ usage()
 	echo "$0 starts the capture, keeping <size> amount of capture in a rotating fashion"
 	echo "$0 runs the <cmd> continuously and look for <pattern> in the <cmd> output"
 	echo "Once pattern is found, the capture is stopped and exits"
-	echo "if pattern is not specified in command line, <cmd> is run just once and stops the capture and exits"
+	echo "if pattern specified is 'None', <cmd> is run just once and stops the capture and exits. This will handy to time box a command"
+	echo
 	echo "Mandatory parameters are interface --interface <if> --dir <dir>"
 	echo
-	echo "$0 --interface <if> --dir <dir> [--pattern <pattern>] [--size <totalSizeinMB>] [--host <IP to filter>] [--filter <filter expression>] [--runCmd <cmd>] [--snaplen <snapSize>]"
+	echo "$0 --interface <if> --dir <dir> --pattern <pattern> [--size <totalSizeinMB>] [--host <IP to filter>] [--filter <filter expression>] [--runCmd <cmd>] [--snaplen <snapSize>]"
 	echo
 	echo "<if>                - Interface to be captured"
 	echo
@@ -142,8 +142,9 @@ usage()
 	echo "                      Default size is ${size}MB"
 	echo "                      Minimum size is ${minSize}MB"
 	echo
-	echo "<pattern>           - A pattern in /var/log/messages to stop tcpdump. When this appears in the file, the tcpdump will stop"
+	echo "<pattern>           - A pattern in <cmd> output to stop tcpdump. When the pattern appears, the tcpdump will stop"
 	echo "                      This is grep's Extended regular expression"
+	echo "                      '--pattern None' will stop the tcpdump on first <cmd> execution regardless of output produced"
 	echo "                      Eg: --pattern 'nfs: server .+ not responding'"
 	echo
 	echo "<IP to filter>      - Filter traffic to and from this IP"
@@ -249,8 +250,8 @@ size=`expr $nFiles \* $fSize`
 
 # Make sure the directory exist, accessible and is on a local filesystem
 [ ! -d "$dir" ] && echo "Directory $dir does not exist" && exit 6
-free=`df -l -m tst | grep -v "^Filesystem " | awk '{print $4}'`
-fs=`df -l -m tst | grep -v "^Filesystem " | awk '{print $6}'`
+free=`df -l -m $dir | grep -v "^Filesystem " | awk '{print $4}'`
+fs=`df -l -m $dir | grep -v "^Filesystem " | awk '{print $6}'`
 [[ -z "$free" ]] && echo "Directory $dir should be a local FS" && exit 6
 
 # Make sure we have atleast twise the required space
