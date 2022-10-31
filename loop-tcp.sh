@@ -3,18 +3,18 @@
 #Defaults
 host="None"
 filter="None"
-runCmd="cat /var/log/messages"
-snapLen=0
-fSize=200
+runCmd="cat /var/log/messages"  # Default <cmd>
+fSize=200 # size of each capture files
 minSize=`expr $fSize \* 2`
-size=1000
-maxSize=10000
-minFillTime=300
+size=1000 # Default size to capture
+maxSize=10000 # Maximum size. Limit to --size <size>
+minFillTime=300 # Warning message if <size> can not hold captures for minFillTime
+MonitorInterval=10 # interval to run <cmd> and to check the pattern
+snaplen=0 # Length of each packet to be captured. 0 means default which is 256KB. 
+
 n=`expr $fSize - 1`
 m=`expr $maxSize + $n`
 nMax=`expr $m / $fSize`
-MonitorInterval=10
-snaplen=0
 
 getTs()
 {
