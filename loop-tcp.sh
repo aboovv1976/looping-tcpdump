@@ -3,7 +3,8 @@
 #Defaults
 host="None"
 filter="None"
-runCmd="cat /var/log/messages"  # Default <cmd>
+pattern="None"
+runCmd="None"  # Default <cmd>
 fSize=200 # size of each capture files
 minSize=`expr $fSize \* 2`
 size=1000 # Default size to capture
@@ -35,7 +36,6 @@ monitor()
 	else
 	    ss=$pattern
 	fi
-        # Find the hash of last line and save to make sure the monitor doesn't trip on this line
         p=`eval $runCmd |grep -a -E "$ss" | tail -1`
         HASH=`echo "$p"|md5sum | cut -f1 -d' '`
 
@@ -130,22 +130,26 @@ usage()
 	echo "Once pattern is found, the capture is stopped and exits"
 	echo "if pattern specified is 'None', <cmd> is run just once and stops the capture and exits. This will handy to time box a command"
 	echo
+	echo "General paractice is to run loop-tcp.sh using nohup and keep it in background. It will run until a pattern is discovered."
 	echo "Mandatory parameters are interface --interface <if> --dir <dir>"
 	echo
-	echo "$0 --interface <if> --dir <dir> --pattern <pattern> [--size <totalSizeinMB>] [--host <IP to filter>] [--filter <filter expression>] [--runCmd <cmd>] [--snaplen <snapSize>]"
+	echo "$0 --interface <if> --dir <dir> [--pattern <pattern>] [--size <totalSizeinMB>] [--host <IP to filter>] [--filter <filter expression>] [--runCmd <cmd>] [--snaplen <snapSize>]"
 	echo
 	echo "<if>                - Interface to be captured"
 	echo
 	echo "<dir>               - Directory to put the capture files"
 	echo
 	echo "<size>              - Limit the total captures to <size>MB"
+	echo "                      Size of each capture file is ${fSize}MB"
 	echo "                      Default size is ${size}MB"
 	echo "                      Minimum size is ${minSize}MB"
+	echo "                      limit is ${maxSize}MB"
 	echo
 	echo "<pattern>           - A pattern in <cmd> output to stop tcpdump. When the pattern appears, the tcpdump will stop"
 	echo "                      This is grep's Extended regular expression"
-	echo "                      '--pattern None' will stop the tcpdump on first <cmd> execution regardless of output produced"
-	echo "                      Eg: --pattern 'nfs: server .+ not responding'"
+	echo "                      Eg: --pattern 'nfs: server .+ not responding' to stop the network capture when this pattern appears in /var/log/messages"
+	echo "                      Not specifying a pattern will stop the tcpdump on first <cmd> execution regardless of output produced"
+	echo "                      Eg: --runCmd 'mount 10.32.1.200:/fss-1/TEST /mnt' will capture packets during mount command"
 	echo
 	echo "<IP to filter>      - Filter traffic to and from this IP"
 	echo
@@ -233,7 +237,8 @@ parseArgs()
     [ -z "$runCmd" ] && echo "A pattern command to be specified with --runCmd. Default is 'cat'" && usage
     [ -z "$snaplen" ] && echo "A snap size must be specified with --snaplen. Default is capture everything" && usage
     [ -n "$unknown" ]  && echo "Unknown options $unknown" && usage
-}
+    [ "$pattern" = "None" -a "$runCmd" = "None" ] && echo "--runCmd is required with no pattern specified" && usage
+} 
 
 parseArgs "$@"
 
@@ -264,6 +269,7 @@ p=`ps -eaf | grep tcpdump |grep -v grep`
 [ "$host" = "None" ] && host=""
 [ "$filter" = "None" ] && filter=""
 [ "$pattern" = "None" ] && pattern=""
+[ "$runCmd" = "None" ] && runCmd="cat /var/log/messages"
 [ -n "$host" ] && filter="$filter host $host"
 
 file=`basename $0`
