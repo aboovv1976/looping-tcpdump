@@ -11,13 +11,17 @@ if no pattern is specified, <cmd> is run just once and stops the capture and exi
 General paractice is to run loop-tcp.sh using nohup and keep it in background. It will run until a pattern is discovered.
 Mandatory parameters are interface --interface <if> --dir <dir>
 
-loop-tcp.sh --interface <if> --dir <dir> [--pattern <pattern>] [--size <totalSizeinMB>] [--host <IP to filter>] [--filter <filter expression>] [--runCmd <cmd>] [--snaplen <snapSize>]
+Usage:
+loop-tcp.sh --interface <if> --dir <dir> 
+            [--pattern <pattern>] [--size <totalSizeinMB>]
+            [--host <IP to filter>] [--filter <filter expression>]
+            [--runCmd <cmd>] [--snaplen <snapSize>]
 
 <if>                - Interface to be captured
 
 <dir>               - Directory to put the capture files
 
-<size>              - Limit the total captures to <size>MB
+<totalSizeinMB>     - Limit the total captures to <size>MB
                       Size of each capture file is 200MB
                       Default size is 5000MB
                       Minimum size is 400MB
@@ -34,12 +38,9 @@ loop-tcp.sh --interface <if> --dir <dir> [--pattern <pattern>] [--size <totalSiz
 <filter expression> - A filter to be passed as tcpdump filter
                       Eg: --filter 'port 2049'
 
-<cmd>               - A filter to be passed as tcpdump filter
+<cmd>               - A command to run to check if an event has happened. See <pattern>
                       Eg: --runCmd 'cat /var/log/syslog'
                       Default is 'cat /var/log/messages'
-
-<totalSize>         - Maximum size of the capture
-                      Default is 1000 (1GB)
 
 <snapSize>          - Size of each packet to capture
                       Default is full packet ```

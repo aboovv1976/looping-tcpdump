@@ -133,13 +133,17 @@ usage()
 	echo "General paractice is to run loop-tcp.sh using nohup and keep it in background. It will run until a pattern is discovered."
 	echo "Mandatory parameters are interface --interface <if> --dir <dir>"
 	echo
-	echo "$0 --interface <if> --dir <dir> [--pattern <pattern>] [--size <totalSizeinMB>] [--host <IP to filter>] [--filter <filter expression>] [--runCmd <cmd>] [--snaplen <snapSize>]"
+	echo "Usage:"
+	echo "$0 --interface <if> --dir <dir>"
+	echo "        [--pattern <pattern>] [--size <totalSizeinMB>]"
+        echo "        [--host <IP to filter>] [--filter <filter expression>]"
+	echo "        [--runCmd <cmd>] [--snaplen <snapSize>]"
 	echo
 	echo "<if>                - Interface to be captured"
 	echo
 	echo "<dir>               - Directory to put the capture files"
 	echo
-	echo "<size>              - Limit the total captures to <size>MB"
+	echo "<totalSizeinMB>     - Limit the total captures to <size>MB"
 	echo "                      Size of each capture file is ${fSize}MB"
 	echo "                      Default size is ${size}MB"
 	echo "                      Minimum size is ${minSize}MB"
@@ -156,12 +160,9 @@ usage()
 	echo "<filter expression> - A filter to be passed as tcpdump filter"
 	echo "                      Eg: --filter 'port 2049'"
 	echo
-	echo "<cmd>               - A filter to be passed as tcpdump filter"
+	echo "<cmd>               - A command to run to check if an event has happened. See <pattern>"
 	echo "                      Eg: --runCmd 'cat /var/log/syslog'"
 	echo "                      Default is 'cat /var/log/messages'"
-	echo
-	echo "<totalSize>         - Maximum size of the capture"
-	echo "                      Default is 1000 (1GB)"
 	echo
 	echo "<snapSize>          - Size of each packet to capture"
 	echo "                      Default is full packet"
