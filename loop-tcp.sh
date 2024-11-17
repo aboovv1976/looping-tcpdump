@@ -153,7 +153,7 @@ usage()
 {
 	echo
 	echo "$0 starts the capture, keeping <size> amount of capture in a rotating fashion"
-	echo "$0 runs the <cmd> continuously and look for <pattern> in the <cmd> output"
+	echo "It runs the <cmd> continuously and look for <pattern> in the <cmd> output"
 	echo "Once pattern is found, the capture is stopped and exits after <postFillSeconds> seconds"
 	echo
 	echo "if no pattern is specified, <cmd> is run just once, stops the capture and exits after <postFillSeconds> seconds."
