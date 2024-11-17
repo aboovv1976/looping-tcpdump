@@ -4,7 +4,7 @@
 host="None"
 filter="None"
 pattern="None"
-runCmd="None"  # Default <cmd>
+runCmd="true"  # Default <cmd>
 fSize=200 # size of each capture files
 minSize=`expr $fSize \* 2`
 size=1000 # Default size to capture
@@ -12,6 +12,7 @@ maxSize=10000 # Maximum size. Limit to --size <size>
 minFillTime=300 # Warning message if <size> can not hold captures for minFillTime
 MonitorInterval=10 # interval to run <cmd> and to check the pattern
 snaplen=0 # Length of each packet to be captured. 0 means default which is 256KB. 
+postFillSeconds=0 # Continue tcpdump for specified seconds after pattern is found. 
 
 n=`expr $fSize - 1`
 m=`expr $maxSize + $n`
@@ -37,33 +38,34 @@ monitor()
 	else
 	    ss=$pattern
 	fi
-        p=`eval $runCmd 2>/tmp/$0_status.err |grep -a -E "$ss" | tail -1`
-        if grep ": command not found" /tmp/$0_status.err >/dev/null 2>&1
+    p=`eval $runCmd 2>/tmp/$0_status.err |grep -a -E "$ss" | tail -1`
+    if grep ": command not found" /tmp/$0_status.err >/dev/null 2>&1
 	then
 		echot "Command $runCmd FAILED! You need to run it with proper command for meaningful results in the capture" 
 		echot $(cat /tmp/$0_status.err)
 		failed=1
 		exit 2
 	fi
-        HASH=`echo "$p"|md5sum | cut -f1 -d' '`
+    HASH=`echo "$p"|md5sum | cut -f1 -d' '`
 
 	# Exit if no pattern provided. Exit after running the command
-	[ -z "$pattern" ] && echot "Command '$runCmd' completed. Exiting" && exit 0
+	[ -z "$pattern" -a "$runCmd" != "true" ] && echot "Command '$runCmd' completed. Exiting after waiting $postFillSeconds seconds" && sleep $postFillSeconds && exit 0
 
 	while true
 	do
 	    sleep $MonitorInterval
-            p=`ps -p $PID |grep -v PID|grep -v grep`
-            if [ -z "$p" ]
-            then
-		    echot "tcpdump is no longer running. Exiting"
-		    exit 9
-            fi
-            p=`eval $runCmd | grep -a -E "$ss" |tail -1`
-            h=`echo "$p"|md5sum | cut -f1 -d' '`
+		p=`ps -p $PID |grep -v PID|grep -v grep`
+		if [ -z "$p" ]
+		then
+			echot "tcpdump is no longer running. Exiting"
+			exit 9
+		fi
+		p=`eval $runCmd | grep -a -E "$ss" |tail -1`
+		h=`echo "$p"|md5sum | cut -f1 -d' '`
 	    if [ -n "$p" -a "$h" != "$HASH" ]
 	    then
-		    echot "pattern found. Exiting"
+		    echot "pattern found. Exiting after waiting $postFillSeconds seconds"
+			sleep $postFillSeconds
 		    exit 0
 	    fi
 	    totalSize=0
@@ -72,14 +74,14 @@ monitor()
 
 	    listing="$(ls -trl --time-style=+%s ${dir}/${file}* 2>/dev/null | grep ^-)"
 	    while read line
-            do
-		    s=`echo $line | awk '{print $5}'` # size of file
-		    f=`echo $line | awk '{print $7}'` # file name
-		    totalSize=`expr $totalSize + $s` # calcultate the total size of capture files in the directory
-		    # get the time stamp on first packet of the oldest file
-		    [ -z "$oldestPTime" ] && oldestPTime=`tcpdump -r $f -n -c 1 -tt 2>/dev/null| awk '{print $1}' | cut -f1 -d.`
-		    c=`expr $c + 1`
-            done <<< "$listing"
+        do
+			s=`echo $line | awk '{print $5}'` # size of file
+			f=`echo $line | awk '{print $7}'` # file name
+			totalSize=`expr $totalSize + $s` # calcultate the total size of capture files in the directory
+			# get the time stamp on first packet of the oldest file
+			[ -z "$oldestPTime" ] && oldestPTime=`tcpdump -r $f -n -c 1 -tt 2>/dev/null| awk '{print $1}' | cut -f1 -d.`
+			c=`expr $c + 1`
+        done <<< "$listing"
 
 	    # check how much data is being captured within minFillTime
 	    t=`date +%s` # current time
@@ -94,7 +96,7 @@ monitor()
 		    [ "$collectionTime" -lt "$minFillTime" -a "$tp" -gt "$lastRunTp" ] && echot "Files rotating too fast - ${totalSize}MB in ${minFillTime}s (${tp}MB/s), increase --size, filter capture with --filter or use --snaplen"
 	            lastRunTp=$tp
 	    fi
-        done
+    done
 }
 
 cleanup()
@@ -104,7 +106,7 @@ cleanup()
     if [ -n "$p" ]
     then
         kill $PID
-	echot "Killed pid $PID process='$p'"
+		echot "Killed pid $PID process='$p'"
     fi
     if [ "$failed" != "1" ] 
     then
@@ -138,20 +140,20 @@ usage()
 	echo
 	echo "$0 starts the capture, keeping <size> amount of capture in a rotating fashion"
 	echo "$0 runs the <cmd> continuously and look for <pattern> in the <cmd> output"
-	echo "Once pattern is found, the capture is stopped and exits"
-	echo "if no pattern is specified, <cmd> is run just once, stops the capture and exits."
+	echo "Once pattern is found, the capture is stopped and exits after <postFillSeconds> seconds"
+	echo
+	echo "if no pattern is specified, <cmd> is run just once, stops the capture and exits after <postFillSeconds> seconds."
 	echo "This will handy to time box a command"
 	echo
-	echo "General paractice is to run loop-tcp.sh using nohup and keep it in background."
-	echo "It will run until a <pattern> is discovered in the output of <cmd>"
+	echo "General paractice is to run $0 using nohup and keep it in background."
 	echo
 	echo "Mandatory parameters are interface --interface <if> --dir <dir>"
 	echo
 	echo "Usage:"
 	echo "$0 --interface <if> --dir <dir>"
 	echo "        [--pattern <pattern>] [--size <totalSizeinMB>]"
-        echo "        [--host <IP to filter>] [--filter <filter expression>]"
-	echo "        [--runCmd <cmd>] [--snaplen <snapSize>]"
+    echo "        [--host <ipToFilter>] [--filter <filterExpression>]"
+	echo "        [--runCmd <cmd>] [--snaplen <snapSize>] [--postfill <postFillSeconds>]"
 	echo
 	echo "<if>                - Interface to be captured"
 	echo
@@ -169,9 +171,9 @@ usage()
 	echo "                      Not specifying a pattern will stop the tcpdump on first <cmd> execution regardless of output produced"
 	echo "                      Eg: --runCmd 'mount 10.32.1.200:/fss-1/TEST /mnt' will capture packets during mount command"
 	echo
-	echo "<IP to filter>      - Filter traffic to and from this IP"
+	echo "<ipToFilter>        - Filter traffic to and from this IP"
 	echo
-	echo "<filter expression> - A filter to be passed as tcpdump filter"
+	echo "<filterExpression>  - A filter to be passed as tcpdump filter"
 	echo "                      Eg: --filter 'port 2049'"
 	echo
 	echo "<cmd>               - A command to run to check if an event has happened. See <pattern>"
@@ -181,6 +183,7 @@ usage()
 	echo "<snapSize>          - Size of each packet to capture"
 	echo "                      Default is full packet"
 	echo
+	echo "<postFillSeconds>   - Fill the tcpdump for specified seconds before stopping tcpdump. Default is 0"
 	exit 0
 }
 
@@ -231,6 +234,10 @@ parseArgs()
           snaplen="$2"
           shift;shift
           ;;
+		--postfill)
+		  postFillSeconds=$2
+          shift;shift
+          ;;
         --runCmd)
           runCmd="$2"
           shift;shift
@@ -251,8 +258,8 @@ parseArgs()
     [ -z "$pattern" ] && echo "A pattern must be specified with --pattern" && usage
     [ -z "$runCmd" ] && echo "A pattern command to be specified with --runCmd. Default is 'cat'" && usage
     [ -z "$snaplen" ] && echo "A snap size must be specified with --snaplen. Default is capture everything" && usage
+	[ -z "$postFillSeconds" ] && echo "Number of seconds must be mentioned with --postfill. Default is 0 secods" && usage
     [ -n "$unknown" ]  && echo "Unknown options $unknown" && usage
-    [ "$pattern" = "None" -a "$runCmd" = "None" ] && echo "--runCmd is required with no pattern specified" && usage
 } 
 
 parseArgs "$@"
@@ -278,13 +285,15 @@ fs=`df -l -m $dir | grep -v "^Filesystem " | awk '{print $6}'`
 m=`expr $size \* 2`
 [ "$free" -lt "$m" ] && echo "$dir in $fs has only ${free}MB, need ${m}MB" && exit 6
 
-p=`ps -eaf | grep tcpdump |grep -v grep`
+p=`ps -eaf | grep "tcpdump -i" |grep -v grep`
 [[ -n "$p" ]] && echo "A tcpdump is already running. Exiting" && exit 7
 
 [ "$host" = "None" ] && host=""
 [ "$filter" = "None" ] && filter=""
 [ "$pattern" = "None" ] && pattern=""
-[ "$runCmd" = "None" ] && runCmd="cat /var/log/messages"
+[ -f "/var/log/messages" ] && logFile="/var/log/messages" || logFile="/var/log/syslog"
+[ ! -f "$logFile" ] && echo "$logFile does not exist" && exit 6
+[ "$runCmd" = "true" -a -n "$pattern" ] && runCmd="cat $logFile"
 [ -n "$host" ] && filter="$filter host $host"
 
 file=`basename $0`
@@ -293,12 +302,11 @@ ttStamp=`date +%h-%d-%H_%M`
 file="${file}_$ttStamp"
 
 echot "Starting network capture in dir=$dir, file name pattern=$file"
-echot "=$nFiles, totalSize=${size}MB, each FileSize=${fSize}MB"
+echot "nFiles=$nFiles, totalSize=${size}MB, each FileSize=${fSize}MB"
 echot "FS $fs has ${free}MB free. proceeding..."
 [ -n "$filter" ] && echot "Capturing using filter='$filter'"
 echot "runCmd='$runCmd'"
 echot "pattern='$pattern'"
-
 
 startTcpDump || exit 8
 trap cleanup EXIT
