@@ -106,13 +106,27 @@ cleanup()
     if [ -n "$p" ]
     then
         kill $PID
-		echot "Killed pid $PID process='$p'"
+        echot "Killed pid $PID process='$p'"
     fi
-    if [ "$failed" != "1" ] 
+
+    listing="$(ls -l --full-time ${dir}/${file}_* 2>/dev/null | grep ^-)"
+    totalSize=0
+    while read line
+    do
+        s=`echo $line | awk '{print $5}'` # size of file
+        t=`echo $line | awk '{print $6" "$7}'` # size of file
+        f=`echo $line | awk '{print $9}'` # file name
+        totalSize=`expr $totalSize + $s` # calcultate the total size of capture files in the directory
+        ts=`tcpdump -r $f -n -c 1 -tttt 2>/dev/null| cut -f1,2 -d' '`
+        c=`expr $c + 1`
+        files="$(echo $files)\nName: $f Size: $s FirstPacket: $ts LastPacket: $t"
+    done <<< "$listing"
+    echot
+    files="Captured Files (total Size: $totalSize): $files"
+    if [ "$failed" != "1" ]
     then
-        echot "Captured Files:"
-        echo "$(ls -ltr ${dir}/${file}*)"
-        echo
+        echot "$files"
+        echot
         echot "Zip files using 'tar cvzf ${dir}/${file}.tgz ${dir}/${file}*'"
         echot "Capture finished"
     fi
@@ -125,7 +139,7 @@ startTcpDump()
 	file=`echo $file | cut -f1 -d.`
 	ttStamp=`date +%h-%d-%H_%M`
 	file="${file}_$ttStamp"
-	param="-i $interface -w $dir/$file -W $nFiles -C $fSize -Z root -s $snaplen $filter"
+	param="-i $interface -w ${dir}/${file}_ -W $nFiles -C $fSize -Z root -s $snaplen $filter"
 	# Start TCP in background
 	tcpdump $param &
 	PID=$!
@@ -191,8 +205,8 @@ echot()
 {
     ttStamp=`date +%h-%d-%H:%M:%S`
     h=$hostname
-    /bin/echo -n "$ttStamp  $h "
-    /bin/echo "$@"
+    [ "$#" -ne "0" ] && /bin/echo -n "$ttStamp  $h " | tee -a ${dir}/${file}.txt
+    /bin/echo -e "$@" | tee -a ${dir}/${file}.txt
     return 0
 }
 
